@@ -11,3 +11,7 @@ Wrapper around paswitch to allow for swapping to a pulse source by an attribute 
 Rust 2018
 pactl
 paswitch
+
+## Installation
+
+    cargo install --git https://github.com/RobertPlant/paswitch-rs --branch master
