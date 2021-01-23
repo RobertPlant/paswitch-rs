@@ -1,0 +1,10 @@
+[package]
+name = "paswitch-rs"
+version = "0.1.0"
+authors = ["Robert Plant <rob@robertplant.io>"]
+edition = "2018"
+
+[dependencies]
+regex = "1.4.3"
+quicli = "0.4.0"
+structopt = "0.3.21"
