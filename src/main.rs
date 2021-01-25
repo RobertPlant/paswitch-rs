@@ -15,7 +15,7 @@ struct Cli {
 fn main() -> CliResult {
     let args = Cli::from_args();
 
-    let response = match pulse::search((args.key, args.search)) {
+    let response = match pulse::search(args.key, args.search) {
         Ok(id) => paswitch::set_source(id).unwrap(),
         Err(err) => err,
     };
