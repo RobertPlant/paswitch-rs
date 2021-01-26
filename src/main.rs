@@ -8,6 +8,9 @@ use structopt::StructOpt;
 struct Cli {
     search: String,
 
+    #[structopt(short, long)]
+    case_sensitive: bool,
+
     #[structopt(short = "s", default_value = "Description")]
     key: String,
 }
@@ -15,7 +18,7 @@ struct Cli {
 fn main() -> CliResult {
     let args = Cli::from_args();
 
-    let response = match pulse::search(args.key, args.search) {
+    let response = match pulse::search(args.key, args.search, args.case_sensitive) {
         Ok(id) => paswitch::set_source(id).unwrap(),
         Err(err) => err,
     };
