@@ -1,7 +1,8 @@
 use regex::{Regex, RegexBuilder};
-use std::io::prelude::*;
+use std::io::prelude::Write;
 use std::process::Command;
 use std::str::Lines;
+use std::{error::Error, fmt};
 use term;
 use term::StdoutTerminal;
 
@@ -13,6 +14,19 @@ struct Sink {
     driver: String,
     mute: String,
     volume: String,
+}
+
+#[derive(Debug)]
+pub enum PulseError {
+    NotFound,
+}
+
+impl Error for PulseError {}
+
+impl fmt::Display for PulseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Your pulse request failed")
+    }
 }
 
 fn list_sinks() -> String {
@@ -35,7 +49,7 @@ pub fn search(
     search_key: String,
     search_value: String,
     case_sensitive: bool,
-) -> Result<String, String> {
+) -> Result<String, PulseError> {
     let pattern = get_search_pattern(search_value, case_sensitive)
         .expect("Something went wrong building the regex");
 
@@ -46,7 +60,7 @@ pub fn search(
         }
     }
 
-    Err(String::from("Not found"))
+    Err(PulseError::NotFound)
 }
 
 fn find(group: &str, search_key: String, pattern: Regex) -> Result<String, String> {

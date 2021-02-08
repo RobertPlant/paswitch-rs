@@ -1,9 +1,10 @@
 extern crate term;
 
+mod commands;
 mod paswitch;
 mod pulse;
 
-use quicli::prelude::*;
+use quicli::prelude::CliResult;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -28,14 +29,15 @@ struct Cli {
 fn main() -> CliResult {
     let args = Cli::from_args();
 
+    commands::check_command(commands::Type::Paswitch)?;
+
     if args.list {
-        pulse::list();
+        pulse::list()
     } else {
-        let response = match pulse::search(args.search_key, args.search, args.case_sensitive) {
-            Ok(id) => paswitch::set_source(id).unwrap(),
-            Err(err) => err,
-        };
-        println!("{}", response);
+        commands::check_command(commands::Type::Pactl)?;
+        let id = pulse::search(args.search_key, args.search, args.case_sensitive)?;
+
+        println!("{}", paswitch::set_source(id).unwrap());
     }
 
     Ok(())
