@@ -1,12 +1,46 @@
 use regex::{Regex, RegexBuilder};
 use std::io::prelude::Write;
 use std::process::Command;
+use std::str::FromStr;
 use std::str::Lines;
 use std::{error::Error, fmt};
 use term;
 use term::StdoutTerminal;
 
-struct Sink {
+use crate::commands::Type;
+
+#[derive(Debug, PartialEq)]
+pub enum EntityType {
+    Sink,
+    Module,
+    Source,
+    Input,
+    SinkInput,
+    Client,
+    Card,
+}
+
+impl FromStr for EntityType {
+    type Err = PulseError;
+
+    fn from_str(input: &str) -> Result<EntityType, Self::Err> {
+        match input {
+            "Sink" => Ok(EntityType::Sink),
+            "Module" => Ok(EntityType::Module),
+            "Source" => Ok(EntityType::Source),
+            "Input" => Ok(EntityType::Input),
+            "Sink Input" => Ok(EntityType::SinkInput),
+            "Client" => Ok(EntityType::Client),
+            "Card" => Ok(EntityType::Card),
+            _ => Err(PulseError {
+                error_type: PulseErrorType::UnknownEntityType,
+                message: format!("Could not map entity with type {}", input),
+            }),
+        }
+    }
+}
+
+struct Entity {
     id: String,
     state: String,
     name: String,
@@ -17,20 +51,31 @@ struct Sink {
 }
 
 #[derive(Debug)]
-pub enum PulseError {
+pub enum PulseErrorType {
     NotFound,
+    NotSink,
+    UnknownEntityType,
+}
+
+#[derive(Debug)]
+pub struct PulseError {
+    error_type: PulseErrorType,
+    message: String,
 }
 
 impl Error for PulseError {}
 
 impl fmt::Display for PulseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Your pulse request failed")
+        write!(f, "Your pulse request failed: {}", &self.message)
     }
 }
 
 fn list_sinks() -> String {
-    let output = Command::new("pactl").arg("list").output().unwrap();
+    let output = Command::new(Type::Pactl.to_string())
+        .arg("list")
+        .output()
+        .unwrap();
 
     if !output.status.success() {
         println!("error");
@@ -60,17 +105,23 @@ pub fn search(
         }
     }
 
-    Err(PulseError::NotFound)
+    Err(PulseError {
+        error_type: PulseErrorType::NotFound,
+        message: "Search failed".to_owned(),
+    })
 }
 
-fn find(group: &str, search_key: String, pattern: Regex) -> Result<String, String> {
+fn find(group: &str, search_key: String, pattern: Regex) -> Result<String, PulseError> {
     let mut lines = group.lines();
     let mut first_line = lines.next().unwrap().split(" #");
-    let group_type = first_line.next().unwrap();
+    let group_type = EntityType::from_str(first_line.next().unwrap())?;
     let id = String::from(first_line.next().unwrap());
 
-    if group_type != "Sink" {
-        return Err("Not a Sink".to_string());
+    if group_type != EntityType::Sink {
+        return Err(PulseError {
+            error_type: PulseErrorType::NotSink,
+            message: "Not a Sink".to_owned(),
+        });
     }
 
     for line in lines {
@@ -83,31 +134,34 @@ fn find(group: &str, search_key: String, pattern: Regex) -> Result<String, Strin
         }
     }
 
-    Err("Not matched".to_string())
+    Err(PulseError {
+        error_type: PulseErrorType::NotFound,
+        message: "Not matched".to_owned(),
+    })
 }
 
-pub fn list() {
+pub fn list() -> Result<(), PulseError> {
     let mut t = term::stdout().unwrap();
     write!(t, "\n").unwrap();
 
     for group in list_sinks().split_terminator("\n\n") {
         let mut lines = group.lines();
         let mut first_line = lines.next().unwrap().split(" #");
-        let group_type = first_line.next().unwrap();
+        let group_type = EntityType::from_str(first_line.next().unwrap())?;
         let id = String::from(first_line.next().unwrap());
 
-        if group_type != "Sink" {
+        if group_type != EntityType::Sink {
             continue;
         }
 
-        let sink = Sink {
+        let sink = Entity {
             id: id,
-            state: pull_data(&mut lines, "State".to_string()).unwrap(),
-            name: pull_data(&mut lines, "Name".to_string()).unwrap(),
-            description: pull_data(&mut lines, "Description".to_string()).unwrap(),
-            driver: pull_data(&mut lines, "Driver".to_string()).unwrap(),
-            mute: pull_data(&mut lines, "Mute".to_string()).unwrap(),
-            volume: pull_data(&mut lines, "Volume".to_string()).unwrap(),
+            state: pull_data(&mut lines, "State".to_string())?,
+            name: pull_data(&mut lines, "Name".to_string())?,
+            description: pull_data(&mut lines, "Description".to_string())?,
+            driver: pull_data(&mut lines, "Driver".to_string())?,
+            mute: pull_data(&mut lines, "Mute".to_string())?,
+            volume: pull_data(&mut lines, "Volume".to_string())?,
         };
 
         print_attribute(&mut t, "         ID", &sink.id);
@@ -119,9 +173,11 @@ pub fn list() {
         print_attribute(&mut t, "     Volume", &sink.volume);
         write!(t, "\n").unwrap();
     }
+
+    Ok(())
 }
 
-fn pull_data(lines: &mut Lines, search_key: String) -> Result<String, String> {
+fn pull_data(lines: &mut Lines, search_key: String) -> Result<String, PulseError> {
     for line in lines {
         let mut split_line = line.split(": ");
         let key = split_line.next().unwrap().trim();
@@ -132,7 +188,10 @@ fn pull_data(lines: &mut Lines, search_key: String) -> Result<String, String> {
         }
     }
 
-    Err("Not found".to_string())
+    Err(PulseError {
+        error_type: PulseErrorType::NotFound,
+        message: "Could not find data from pactl".to_owned(),
+    })
 }
 
 fn print_attribute(t: &mut Box<StdoutTerminal>, key: &str, value: &str) {

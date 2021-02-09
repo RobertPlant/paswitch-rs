@@ -32,7 +32,7 @@ fn main() -> CliResult {
     commands::check_command(commands::Type::Paswitch)?;
 
     if args.list {
-        pulse::list()
+        pulse::list()?
     } else {
         commands::check_command(commands::Type::Pactl)?;
         let id = pulse::search(args.search_key, args.search, args.case_sensitive)?;

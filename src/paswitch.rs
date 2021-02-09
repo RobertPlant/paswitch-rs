@@ -1,7 +1,9 @@
 use std::process::Command;
 
+use crate::commands::Type;
+
 pub fn set_source(source: String) -> Result<String, String> {
-    let output = Command::new("paswitch")
+    let output = Command::new(Type::Paswitch.to_string())
         .arg(&source)
         .output()
         .expect("An invalid Sink has been supplied");
