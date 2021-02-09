@@ -10,7 +10,7 @@ use structopt::StructOpt;
 #[derive(Debug, StructOpt)]
 struct Cli {
     /// Device to search for
-    #[structopt(required_unless("list"), default_value = "")]
+    #[structopt(required_unless("list"))]
     search: String,
 
     /// The field from `pactl list` that should be searched
@@ -32,12 +32,12 @@ fn main() -> CliResult {
     commands::check_command(commands::Type::Paswitch)?;
 
     if args.list {
-        pulse::list()?
-    } else {
+        return Ok(pulse::list()?);
+    } else if args.search.chars().count() > 0 {
         commands::check_command(commands::Type::Pactl)?;
         let id = pulse::search(args.search_key, args.search, args.case_sensitive)?;
 
-        println!("{}", paswitch::set_source(id).unwrap());
+        return Ok(paswitch::set_source(id)?);
     }
 
     Ok(())
