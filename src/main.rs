@@ -3,14 +3,22 @@ extern crate term;
 mod commands;
 mod paswitch;
 mod pulse;
+mod types;
 
+use commands::{
+    check_command,
+    Type::{Pactl, Paswitch},
+};
+use paswitch::set_source;
+use pulse::{list, search};
 use quicli::prelude::CliResult;
 use structopt::StructOpt;
+use types::Type;
 
 #[derive(Debug, StructOpt)]
 struct Cli {
     /// Device to search for
-    #[structopt(required_unless("list"))]
+    #[structopt(required_unless("list"), default_value = "")]
     search: String,
 
     /// The field from `pactl list` that should be searched
@@ -29,16 +37,15 @@ struct Cli {
 fn main() -> CliResult {
     let args = Cli::from_args();
 
-    commands::check_command(commands::Type::Paswitch)?;
+    check_command(Paswitch)?;
 
-    if args.list {
-        return Ok(pulse::list()?);
-    } else if args.search.chars().count() > 0 {
-        commands::check_command(commands::Type::Pactl)?;
-        let id = pulse::search(args.search_key, args.search, args.case_sensitive)?;
+    Ok(match Type::from(&args) {
+        Type::List => list()?,
+        Type::Set => {
+            check_command(Pactl)?;
 
-        return Ok(paswitch::set_source(id)?);
-    }
-
-    Ok(())
+            set_source(search(args.search_key, args.search, args.case_sensitive)?)?
+        }
+        _ => (),
+    })
 }
