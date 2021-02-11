@@ -1,13 +1,11 @@
+use crate::commands::Type;
 use regex::{Regex, RegexBuilder};
 use std::io::prelude::Write;
 use std::process::Command;
 use std::str::FromStr;
 use std::str::Lines;
 use std::{error::Error, fmt};
-use term;
 use term::StdoutTerminal;
-
-use crate::commands::Type;
 
 #[derive(Debug, PartialEq)]
 pub enum EntityType {
@@ -85,7 +83,7 @@ fn list_sinks() -> String {
 }
 
 fn get_search_pattern(search_value: String, case_sensitive: bool) -> Result<Regex, regex::Error> {
-    RegexBuilder::new(&format!(".*{}.*", search_value).to_owned())
+    RegexBuilder::new(&format!(".*{}.*", search_value))
         .case_insensitive(!case_sensitive)
         .build()
 }
@@ -142,7 +140,7 @@ fn find(group: &str, search_key: String, pattern: Regex) -> Result<String, Pulse
 
 pub fn list() -> Result<(), PulseError> {
     let mut t = term::stdout().unwrap();
-    write!(t, "\n").unwrap();
+    writeln!(t).unwrap();
 
     for group in list_sinks().split_terminator("\n\n") {
         let mut lines = group.lines();
@@ -155,7 +153,7 @@ pub fn list() -> Result<(), PulseError> {
         }
 
         let sink = Entity {
-            id: id,
+            id,
             state: pull_data(&mut lines, "State".to_string())?,
             name: pull_data(&mut lines, "Name".to_string())?,
             description: pull_data(&mut lines, "Description".to_string())?,
@@ -171,7 +169,7 @@ pub fn list() -> Result<(), PulseError> {
         print_attribute(&mut t, "     Driver", &sink.driver);
         print_attribute(&mut t, "       Mute", &sink.mute);
         print_attribute(&mut t, "     Volume", &sink.volume);
-        write!(t, "\n").unwrap();
+        writeln!(t).unwrap();
     }
 
     Ok(())
@@ -198,7 +196,7 @@ fn print_attribute(t: &mut Box<StdoutTerminal>, key: &str, value: &str) {
     t.attr(term::Attr::Bold).unwrap();
     write!(t, "{}: ", key).unwrap();
     t.reset().unwrap();
-    write!(t, "{}\n", value).unwrap();
+    writeln!(t, "{}", value).unwrap();
 }
 
 #[cfg(test)]

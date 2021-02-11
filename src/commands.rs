@@ -39,7 +39,7 @@ pub fn check_command(command: Type) -> Result<(), CommandError> {
         Ok(_) => Ok(()),
         _ => Err(CommandError {
             error_type: CommandErrorType::Missing,
-            command: command,
+            command,
         }),
     }
 }
