@@ -18,8 +18,8 @@ use types::Type;
 #[derive(Debug, StructOpt)]
 struct Cli {
     /// Device to search for
-    #[structopt(required_unless("list"), default_value = "")]
-    search: String,
+    #[structopt(required_unless("list"))]
+    search: Option<String>,
 
     /// The field from `pactl list` that should be searched
     #[structopt(short, long, default_value = "Description")]
@@ -44,7 +44,11 @@ fn main() -> CliResult {
         Type::Set => {
             check_command(Pactl)?;
 
-            set_source(search(args.search_key, args.search, args.case_sensitive)?)?
+            set_source(search(
+                args.search_key,
+                args.search.unwrap(),
+                args.case_sensitive,
+            )?)?
         }
         _ => (),
     })

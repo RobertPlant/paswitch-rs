@@ -11,7 +11,7 @@ impl From<&Cli> for Type {
     fn from(args: &Cli) -> Self {
         if args.list {
             Type::List
-        } else if args.search.chars().count() > 0 {
+        } else if args.search.is_some() && args.search.as_ref().unwrap().chars().count() > 0 {
             Type::Set
         } else {
             Type::Unknown
@@ -29,7 +29,7 @@ mod tests {
             Type::from(&Cli {
                 list: true,
                 case_sensitive: false,
-                search: "".to_owned(),
+                search: Some("".to_owned()),
                 search_key: "".to_owned()
             }),
             Type::List
@@ -42,7 +42,7 @@ mod tests {
             Type::from(&Cli {
                 list: true,
                 case_sensitive: false,
-                search: "Fiio".to_owned(),
+                search: Some("Fiio".to_owned()),
                 search_key: "".to_owned()
             }),
             Type::List
@@ -55,7 +55,7 @@ mod tests {
             Type::from(&Cli {
                 list: false,
                 case_sensitive: false,
-                search: "Fiio".to_owned(),
+                search: Some("Fiio".to_owned()),
                 search_key: "".to_owned()
             }),
             Type::Set
@@ -68,7 +68,20 @@ mod tests {
             Type::from(&Cli {
                 list: false,
                 case_sensitive: false,
-                search: "".to_owned(),
+                search: Some("".to_owned()),
+                search_key: "".to_owned()
+            }),
+            Type::Unknown
+        )
+    }
+
+    #[test]
+    fn test_allows_none_search() {
+        assert_eq!(
+            Type::from(&Cli {
+                list: false,
+                case_sensitive: false,
+                search: None,
                 search_key: "".to_owned()
             }),
             Type::Unknown

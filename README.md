@@ -18,6 +18,10 @@ Wrapper around paswitch to allow for swapping to a pulse source by an attribute 
 
     cargo install paswitch-rs
 
+### On Archlinux
+
+    yay paswitch-rs
+
 ## Examples:
 
 Swap all output to a named device:
