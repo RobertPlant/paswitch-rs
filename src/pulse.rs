@@ -16,6 +16,7 @@ pub enum EntityType {
     SinkInput,
     Client,
     Card,
+    Unknown,
 }
 
 impl FromStr for EntityType {
@@ -30,10 +31,7 @@ impl FromStr for EntityType {
             "Sink Input" => Ok(EntityType::SinkInput),
             "Client" => Ok(EntityType::Client),
             "Card" => Ok(EntityType::Card),
-            _ => Err(PulseError {
-                error_type: PulseErrorType::UnknownEntityType,
-                message: format!("Could not map entity with type {}", input),
-            }),
+            _ => Ok(EntityType::Unknown),
         }
     }
 }
@@ -52,7 +50,6 @@ struct Entity {
 pub enum PulseErrorType {
     NotFound,
     NotSink,
-    UnknownEntityType,
 }
 
 #[derive(Debug)]
