@@ -1,6 +1,6 @@
 [package]
 name = "paswitch-rs"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Robert Plant <rob@robertplant.io>"]
 edition = "2018"
 description = "List and swap to pulse sinks by name"

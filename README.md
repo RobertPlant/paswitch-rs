@@ -31,3 +31,7 @@ Swap all output to a named device:
 List available devices:
 
     paswitch-rs --list
+
+Interactively select an output device:
+
+    paswitch-rs --interactive
