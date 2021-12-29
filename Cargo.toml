@@ -1,16 +1,16 @@
 [package]
 name = "paswitch-rs"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Robert Plant <rob@robertplant.io>"]
-edition = "2018"
+edition = "2021"
 description = "List and swap to pulse sinks by name"
 license = "GPL-3.0-only"
 repository = "https://github.com/RobertPlant/paswitch-rs/"
 
 [dependencies]
 quicli = "0.4.0"
-regex = "1.4.3"
-structopt = "0.3.21"
-strum = "0.20"
-strum_macros = "0.20"
+regex = "1.5.4"
+structopt = "0.3.25"
+strum = "0.23"
+strum_macros = "0.23"
 term = "0.7.0"
