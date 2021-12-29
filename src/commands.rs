@@ -1,15 +1,9 @@
 use std::process::Command;
 use std::{error::Error, fmt};
-use strum_macros::ToString;
-
-#[derive(Debug)]
-pub enum CommandErrorType {
-    Missing,
-}
+use strum_macros::Display;
 
 #[derive(Debug)]
 pub struct CommandError {
-    error_type: CommandErrorType,
     command: Type,
 }
 
@@ -25,7 +19,7 @@ impl fmt::Display for CommandError {
     }
 }
 
-#[derive(ToString, Debug)]
+#[derive(Display, Debug)]
 pub enum Type {
     #[strum(serialize = "paswitch")]
     Paswitch,
@@ -37,9 +31,6 @@ pub enum Type {
 pub fn check_command(command: Type) -> Result<(), CommandError> {
     match Command::new(command.to_string()).output() {
         Ok(_) => Ok(()),
-        _ => Err(CommandError {
-            error_type: CommandErrorType::Missing,
-            command,
-        }),
+        _ => Err(CommandError { command }),
     }
 }

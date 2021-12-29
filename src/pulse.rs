@@ -47,14 +47,7 @@ struct Entity {
 }
 
 #[derive(Debug)]
-pub enum PulseErrorType {
-    NotFound,
-    NotSink,
-}
-
-#[derive(Debug)]
 pub struct PulseError {
-    error_type: PulseErrorType,
     message: String,
 }
 
@@ -101,7 +94,6 @@ pub fn search(
     }
 
     Err(PulseError {
-        error_type: PulseErrorType::NotFound,
         message: "Search failed".to_owned(),
     })
 }
@@ -114,7 +106,6 @@ fn find(group: &str, search_key: String, pattern: Regex) -> Result<String, Pulse
 
     if group_type != EntityType::Sink {
         return Err(PulseError {
-            error_type: PulseErrorType::NotSink,
             message: "Not a Sink".to_owned(),
         });
     }
@@ -130,7 +121,6 @@ fn find(group: &str, search_key: String, pattern: Regex) -> Result<String, Pulse
     }
 
     Err(PulseError {
-        error_type: PulseErrorType::NotFound,
         message: "Not matched".to_owned(),
     })
 }
@@ -184,7 +174,6 @@ fn pull_data(lines: &mut Lines, search_key: String) -> Result<String, PulseError
     }
 
     Err(PulseError {
-        error_type: PulseErrorType::NotFound,
         message: "Could not find data from pactl".to_owned(),
     })
 }

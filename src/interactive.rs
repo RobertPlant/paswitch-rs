@@ -4,13 +4,7 @@ use crate::paswitch::set_source;
 use crate::pulse::list;
 
 #[derive(Debug)]
-pub enum CursesErrorType {
-    PulseSubCommandFailed,
-}
-
-#[derive(Debug)]
 pub struct CursesError {
-    error_type: CursesErrorType,
     message: String,
 }
 
@@ -29,7 +23,6 @@ pub fn interactive() -> Result<(), CursesError> {
         Ok(_) => {}
         Err(_) => {
             return Err(CursesError {
-                error_type: CursesErrorType::PulseSubCommandFailed,
                 message: "Listing failed".to_owned(),
             })
         }
@@ -51,7 +44,6 @@ pub fn interactive() -> Result<(), CursesError> {
         Ok(_) => {}
         Err(_) => {
             return Err(CursesError {
-                error_type: CursesErrorType::PulseSubCommandFailed,
                 message: "Setting failed".to_owned(),
             })
         }
