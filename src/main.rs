@@ -20,7 +20,6 @@ use types::Type;
 #[derive(Debug, Parser)]
 struct Cli {
     /// Device to search for
-    #[clap(required_unless("list"), required_unless("interactive"))]
     search: Option<String>,
 
     /// The field from `pactl list` that should be searched
@@ -41,8 +40,7 @@ struct Cli {
 }
 
 fn main() -> Result<(), ExitFailure> {
-    let args = Cli::from_args();
-
+    let args = Cli::parse();
     check_command(Paswitch)?;
 
     Ok(match Type::from(&args) {
