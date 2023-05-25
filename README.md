@@ -4,7 +4,7 @@ Wrapper around paswitch to allow for swapping to a pulse source by an attribute 
 
 ## Prerequisites
 
-    Rust 2018
+    Rust 2021
     pactl
     paswitch
 
