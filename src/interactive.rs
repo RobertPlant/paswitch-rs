@@ -1,53 +1,21 @@
-use std::{error::Error, fmt};
+use anyhow::{Context, Result};
+use std::io::{stdin, stdout, Write};
 
 use crate::paswitch::set_source;
 use crate::pulse::list;
 
-#[derive(Debug)]
-pub struct CursesError {
-    message: String,
-}
-
-impl Error for CursesError {}
-
-impl fmt::Display for CursesError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Your curses request failed: {}", &self.message)
-    }
-}
-
-pub fn interactive() -> Result<(), CursesError> {
-    use std::io::{stdin, stdout, Write};
+pub fn interactive() -> Result<()> {
     let mut s = String::new();
-    match list() {
-        Ok(_) => {}
-        Err(_) => {
-            return Err(CursesError {
-                message: "Listing failed".to_owned(),
-            })
-        }
-    }
+    list().context("Failed to list audio sinks")?;
 
     print!("Please select an input id: ");
     let _ = stdout().flush();
-    stdin()
-        .read_line(&mut s)
-        .expect("Did not enter a correct string");
-    if let Some('\n') = s.chars().next_back() {
-        s.pop();
-    }
-    if let Some('\r') = s.chars().next_back() {
-        s.pop();
-    }
+    stdin().read_line(&mut s).context("Failed to read input")?;
 
-    match set_source(s) {
-        Ok(_) => {}
-        Err(_) => {
-            return Err(CursesError {
-                message: "Setting failed".to_owned(),
-            })
-        }
-    }
+    // Trim newline characters
+    let s = s.trim_end().to_string();
+
+    set_source(s).context("Failed to set audio source")?;
 
     Ok(())
 }

@@ -1,10 +1,10 @@
 use crate::commands::Type;
+use anyhow::{anyhow, Result};
 use regex::{Regex, RegexBuilder};
 use std::io::prelude::Write;
 use std::process::Command;
 use std::str::FromStr;
 use std::str::Lines;
-use std::{error::Error, fmt};
 use term::StdoutTerminal;
 
 #[derive(Debug, PartialEq)]
@@ -20,7 +20,7 @@ pub enum EntityType {
 }
 
 impl FromStr for EntityType {
-    type Err = PulseError;
+    type Err = anyhow::Error;
 
     fn from_str(input: &str) -> Result<EntityType, Self::Err> {
         match input {
@@ -46,19 +46,6 @@ struct Entity {
     volume: String,
 }
 
-#[derive(Debug)]
-pub struct PulseError {
-    message: String,
-}
-
-impl Error for PulseError {}
-
-impl fmt::Display for PulseError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Your pulse request failed: {}", &self.message)
-    }
-}
-
 fn list_sinks() -> String {
     let output = Command::new(Type::Pactl.to_string())
         .arg("list")
@@ -78,13 +65,8 @@ fn get_search_pattern(search_value: String, case_sensitive: bool) -> Result<Rege
         .build()
 }
 
-pub fn search(
-    search_key: String,
-    search_value: String,
-    case_sensitive: bool,
-) -> Result<String, PulseError> {
-    let pattern = get_search_pattern(search_value, case_sensitive)
-        .expect("Something went wrong building the regex");
+pub fn search(search_key: String, search_value: String, case_sensitive: bool) -> Result<String> {
+    let pattern = get_search_pattern(search_value, case_sensitive)?;
 
     for group in list_sinks().split_terminator("\n\n") {
         match find(group, search_key.to_owned(), pattern.to_owned()) {
@@ -93,21 +75,17 @@ pub fn search(
         }
     }
 
-    Err(PulseError {
-        message: "Search failed".to_owned(),
-    })
+    Err(anyhow!("Search failed: no matching sink found"))
 }
 
-fn find(group: &str, search_key: String, pattern: Regex) -> Result<String, PulseError> {
+fn find(group: &str, search_key: String, pattern: Regex) -> Result<String> {
     let mut lines = group.lines();
     let mut first_line = lines.next().unwrap().split(" #");
     let group_type = EntityType::from_str(first_line.next().unwrap())?;
     let id = String::from(first_line.next().unwrap());
 
     if group_type != EntityType::Sink {
-        return Err(PulseError {
-            message: "Not a Sink".to_owned(),
-        });
+        return Err(anyhow!("Not a Sink"));
     }
 
     for line in lines {
@@ -120,12 +98,10 @@ fn find(group: &str, search_key: String, pattern: Regex) -> Result<String, Pulse
         }
     }
 
-    Err(PulseError {
-        message: "Not matched".to_owned(),
-    })
+    Err(anyhow!("Not matched"))
 }
 
-pub fn list() -> Result<(), PulseError> {
+pub fn list() -> Result<()> {
     let mut t = term::stdout().unwrap();
     writeln!(t).unwrap();
 
@@ -162,7 +138,7 @@ pub fn list() -> Result<(), PulseError> {
     Ok(())
 }
 
-fn pull_data(lines: &mut Lines, search_key: String) -> Result<String, PulseError> {
+fn pull_data(lines: &mut Lines, search_key: String) -> Result<String> {
     for line in lines {
         let mut split_line = line.split(": ");
         let key = split_line.next().unwrap().trim();
@@ -173,9 +149,7 @@ fn pull_data(lines: &mut Lines, search_key: String) -> Result<String, PulseError
         }
     }
 
-    Err(PulseError {
-        message: "Could not find data from pactl".to_owned(),
-    })
+    Err(anyhow!("Could not find '{}' in pactl output", search_key))
 }
 
 fn print_attribute(t: &mut Box<StdoutTerminal>, key: &str, value: &str) {

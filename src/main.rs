@@ -6,12 +6,12 @@ mod paswitch;
 mod pulse;
 mod types;
 
+use anyhow::Result;
 use clap::Parser;
 use commands::{
     check_command,
     Type::{Pactl, Paswitch},
 };
-use exitfailure::ExitFailure;
 use interactive::interactive;
 use paswitch::set_source;
 use pulse::{list, search};
@@ -39,16 +39,15 @@ struct Cli {
     interactive: bool,
 }
 
-fn main() -> Result<(), ExitFailure> {
+fn main() -> Result<()> {
     let args = Cli::parse();
     check_command(Paswitch)?;
 
-    Ok(match Type::from(&args) {
+    match Type::from(&args) {
         Type::List => list()?,
         Type::Interactive => interactive()?,
         Type::Set => {
             check_command(Pactl)?;
-
             set_source(search(
                 args.search_key,
                 args.search.unwrap(),
@@ -56,5 +55,7 @@ fn main() -> Result<(), ExitFailure> {
             )?)?
         }
         _ => (),
-    })
+    }
+
+    Ok(())
 }
