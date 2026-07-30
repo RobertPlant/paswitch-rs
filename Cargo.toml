@@ -10,7 +10,7 @@ repository = "https://github.com/RobertPlant/paswitch-rs/"
 [dependencies]
 clap = { version = "4.5.53", features = ["derive"] }
 regex = "1.12.2"
-strum = "0.27.2"
-strum_macros = "0.27.2"
+strum = "0.28.0"
+strum_macros = "0.28.0"
 term = "1.2.0"
 anyhow = "1.0"
