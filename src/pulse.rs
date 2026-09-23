@@ -1,6 +1,5 @@
 use crate::commands::Type;
 use anyhow::{anyhow, Result};
-use regex::{Regex, RegexBuilder};
 use std::io::prelude::Write;
 use std::process::Command;
 use std::str::FromStr;
@@ -59,17 +58,21 @@ fn list_sinks() -> String {
     String::from_utf8(output.stdout).unwrap()
 }
 
-fn get_search_pattern(search_value: String, case_sensitive: bool) -> Result<Regex, regex::Error> {
-    RegexBuilder::new(&format!(".*{}.*", search_value))
-        .case_insensitive(!case_sensitive)
-        .build()
+/// Literal substring match. Device descriptions routinely contain regex
+/// metacharacters -- "Arctis 7 (Game)" parsed as a pattern matches the text
+/// "Arctis 7 Game" and misses the real name -- so the needle is compared as
+/// plain text.
+fn matches(haystack: &str, needle: &str, case_sensitive: bool) -> bool {
+    if case_sensitive {
+        haystack.contains(needle)
+    } else {
+        haystack.to_lowercase().contains(&needle.to_lowercase())
+    }
 }
 
 pub fn search(search_key: String, search_value: String, case_sensitive: bool) -> Result<String> {
-    let pattern = get_search_pattern(search_value, case_sensitive)?;
-
     for group in list_sinks().split_terminator("\n\n") {
-        match find(group, search_key.to_owned(), pattern.to_owned()) {
+        match find(group, search_key.to_owned(), &search_value, case_sensitive) {
             Ok(id) => return Ok(id),
             _ => continue,
         }
@@ -78,7 +81,7 @@ pub fn search(search_key: String, search_value: String, case_sensitive: bool) ->
     Err(anyhow!("Search failed: no matching sink found"))
 }
 
-fn find(group: &str, search_key: String, pattern: Regex) -> Result<String> {
+fn find(group: &str, search_key: String, needle: &str, case_sensitive: bool) -> Result<String> {
     let mut lines = group.lines();
     let mut first_line = lines.next().unwrap().split(" #");
     let group_type = EntityType::from_str(first_line.next().unwrap())?;
@@ -93,7 +96,7 @@ fn find(group: &str, search_key: String, pattern: Regex) -> Result<String> {
         let key = split_line.next().unwrap().trim();
         let value = split_line.next().unwrap_or("");
 
-        if key == search_key && pattern.is_match(value) {
+        if key == search_key && matches(value, needle, case_sensitive) {
             return Ok(id);
         }
     }
@@ -166,42 +169,41 @@ mod tests {
 
     #[test]
     fn test_find_by_description() {
-        let search_value = "Fiio".to_string();
-        let pattern = Regex::new(&format!(".*{}.*", search_value).to_owned()).unwrap();
         let contents = fs::read_to_string("src/test/data/pactl-fiio.txt")
             .expect("Something went wrong reading the file");
 
         assert_eq!(
-            find(&contents, "Description".to_string(), pattern).unwrap(),
+            find(&contents, "Description".to_string(), "Fiio", false).unwrap(),
             "43"
         )
     }
 
     #[test]
-    fn test_get_search_pattern_case_sensitive() {
-        assert!(get_search_pattern("test".to_string(), true)
-            .unwrap()
-            .is_match("test"))
+    fn test_matches_case_sensitive() {
+        assert!(matches("test", "test", true))
     }
 
     #[test]
-    fn test_get_search_pattern_case_sensitive_with_capitals() {
-        assert!(!get_search_pattern("Test".to_string(), true)
-            .unwrap()
-            .is_match("test"))
+    fn test_matches_case_sensitive_with_capitals() {
+        assert!(!matches("test", "Test", true))
     }
 
     #[test]
-    fn test_get_search_pattern_case_insensitive() {
-        assert!(get_search_pattern("test".to_string(), false)
-            .unwrap()
-            .is_match("Test"))
+    fn test_matches_case_insensitive() {
+        assert!(matches("Test", "test", false))
     }
 
     #[test]
-    fn test_get_search_pattern_case_insensitive_with_capitals() {
-        assert!(get_search_pattern("Test".to_string(), false)
-            .unwrap()
-            .is_match("test"))
+    fn test_matches_case_insensitive_with_capitals() {
+        assert!(matches("test", "Test", false))
+    }
+
+    #[test]
+    fn test_matches_regex_metacharacters_literally() {
+        // As a pattern, "(Game)" matched "Arctis 7 Game" and missed the real
+        // device name; "Fiio +" failed to compile at all.
+        assert!(matches("Arctis 7 (Game)", "(Game)", false));
+        assert!(!matches("Arctis 7 Game", "(Game)", false));
+        assert!(matches("Fiio + DAC", "Fiio +", false));
     }
 }
