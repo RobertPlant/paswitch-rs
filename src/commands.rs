@@ -1,14 +1,19 @@
 use anyhow::{anyhow, Result};
 use std::process::Command;
-use strum_macros::Display;
 
-#[derive(Display, Debug)]
+#[derive(Debug)]
 pub enum Type {
-    #[strum(serialize = "paswitch")]
     Paswitch,
-
-    #[strum(serialize = "pactl")]
     Pactl,
+}
+
+impl std::fmt::Display for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.write_str(match self {
+            Type::Paswitch => "paswitch",
+            Type::Pactl => "pactl",
+        })
+    }
 }
 
 pub fn check_command(command: Type) -> Result<()> {
