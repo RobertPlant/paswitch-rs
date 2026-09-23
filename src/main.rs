@@ -6,10 +6,7 @@ mod types;
 
 use anyhow::Result;
 use clap::Parser;
-use commands::{
-    check_command,
-    Type::{Pactl, Paswitch},
-};
+use commands::{check_command, PACTL};
 use interactive::interactive;
 use paswitch::set_source;
 use pulse::{list, search};
@@ -39,19 +36,16 @@ struct Cli {
 
 fn main() -> Result<()> {
     let args = Cli::parse();
-    check_command(Paswitch)?;
+    check_command(PACTL)?;
 
     match Type::from(&args) {
         Type::List => list()?,
         Type::Interactive => interactive()?,
-        Type::Set => {
-            check_command(Pactl)?;
-            set_source(search(
-                args.search_key,
-                args.search.unwrap(),
-                args.case_sensitive,
-            )?)?
-        }
+        Type::Set => set_source(search(
+            args.search_key,
+            args.search.unwrap(),
+            args.case_sensitive,
+        )?)?,
         _ => (),
     }
 

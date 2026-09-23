@@ -1,4 +1,4 @@
-use crate::commands::Type;
+use crate::commands::PACTL;
 use anyhow::{anyhow, Result};
 use std::io::{stdout, Write};
 use std::process::Command;
@@ -45,10 +45,7 @@ struct Entity {
 }
 
 fn list_sinks() -> String {
-    let output = Command::new(Type::Pactl.to_string())
-        .arg("list")
-        .output()
-        .unwrap();
+    let output = Command::new(PACTL).arg("list").output().unwrap();
 
     if !output.status.success() {
         println!("error");

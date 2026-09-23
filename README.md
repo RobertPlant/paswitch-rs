@@ -6,7 +6,6 @@ Wrapper around paswitch to allow for swapping to a pulse source by an attribute 
 
     Rust 2021
     pactl
-    paswitch
 
 ## Installation
 
