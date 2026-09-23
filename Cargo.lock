@@ -128,7 +128,6 @@ version = "0.3.17"
 dependencies = [
  "anyhow",
  "clap",
- "term",
 ]
 
 [[package]]
@@ -164,15 +163,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
-]
-
-[[package]]
-name = "term"
-version = "1.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8c27177b12a6399ffc08b98f76f7c9a1f4fe9fc967c784c5a071fa8d93cf7e1"
-dependencies = [
- "windows-sys",
 ]
 
 [[package]]

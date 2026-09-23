@@ -1,10 +1,9 @@
 use crate::commands::Type;
 use anyhow::{anyhow, Result};
-use std::io::prelude::Write;
+use std::io::{stdout, Write};
 use std::process::Command;
 use std::str::FromStr;
 use std::str::Lines;
-use term::StdoutTerminal;
 
 #[derive(Debug, PartialEq)]
 pub enum EntityType {
@@ -105,7 +104,7 @@ fn find(group: &str, search_key: String, needle: &str, case_sensitive: bool) -> 
 }
 
 pub fn list() -> Result<()> {
-    let mut t = term::stdout().unwrap();
+    let mut t = stdout();
     writeln!(t).unwrap();
 
     for group in list_sinks().split_terminator("\n\n") {
@@ -155,11 +154,8 @@ fn pull_data(lines: &mut Lines, search_key: String) -> Result<String> {
     Err(anyhow!("Could not find '{}' in pactl output", search_key))
 }
 
-fn print_attribute(t: &mut Box<StdoutTerminal>, key: &str, value: &str) {
-    t.attr(term::Attr::Bold).unwrap();
-    write!(t, "{}: ", key).unwrap();
-    t.reset().unwrap();
-    writeln!(t, "{}", value).unwrap();
+fn print_attribute(t: &mut impl Write, key: &str, value: &str) {
+    writeln!(t, "\x1b[1m{}: \x1b[0m{}", key, value).unwrap();
 }
 
 #[cfg(test)]
@@ -196,6 +192,16 @@ mod tests {
     #[test]
     fn test_matches_case_insensitive_with_capitals() {
         assert!(matches("test", "Test", false))
+    }
+
+    #[test]
+    fn test_print_attribute_emits_bold_key_plain_value() {
+        let mut out = Vec::new();
+        print_attribute(&mut out, "       Name", "alsa_output.usb-FiiO");
+        assert_eq!(
+            String::from_utf8(out).unwrap(),
+            "\x1b[1m       Name: \x1b[0malsa_output.usb-FiiO\n"
+        );
     }
 
     #[test]

@@ -1,5 +1,3 @@
-extern crate term;
-
 mod commands;
 mod interactive;
 mod paswitch;
