@@ -1,6 +1,6 @@
 ## paswitch-rs
 
-Wrapper around paswitch to allow for swapping to a pulse source by an attribute other than its id.
+Swap all pulse output to a sink matched by name, description or any other `pactl list` attribute, instead of by its id.
 
 ## Prerequisites
 
@@ -16,10 +16,6 @@ Wrapper around paswitch to allow for swapping to a pulse source by an attribute 
 ### Via crates.io
 
     cargo install paswitch-rs
-
-### On Archlinux
-
-    yay paswitch-rs
 
 ## Examples:
 
