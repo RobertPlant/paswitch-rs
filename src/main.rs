@@ -13,6 +13,7 @@ use pulse::{list, search};
 use types::Type;
 
 #[derive(Debug, Parser)]
+#[command(version)]
 struct Cli {
     /// Device to search for
     search: Option<String>,
