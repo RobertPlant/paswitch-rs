@@ -13,6 +13,12 @@ Swap all pulse output to a sink matched by name, description or any other `pactl
 
     cargo install --git https://github.com/RobertPlant/paswitch-rs --branch master
 
+### Via Nix
+
+    nix run github:RobertPlant/paswitch-rs -- --list
+
+or add `github:RobertPlant/paswitch-rs` as a flake input and use `packages.<system>.default`.
+
 ### Via crates.io
 
     cargo install paswitch-rs

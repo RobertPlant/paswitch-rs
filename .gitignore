@@ -5,3 +5,6 @@ target
 .devenv.flake.nix
 .direnv/
 devenv.local.nix
+
+# nix build
+result
