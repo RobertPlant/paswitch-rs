@@ -12,10 +12,7 @@ pub fn interactive() -> Result<()> {
     let _ = stdout().flush();
     stdin().read_line(&mut s).context("Failed to read input")?;
 
-    // Trim newline characters
-    let s = s.trim_end().to_string();
-
-    set_source(s).context("Failed to set audio source")?;
+    set_source(s.trim_end()).context("Failed to set audio source")?;
 
     Ok(())
 }

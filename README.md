@@ -29,6 +29,10 @@ Swap all output to a named device:
 
     paswitch-rs Fiio
 
+Match on any other field or property from `pactl list`:
+
+    paswitch-rs --search-key device.description Fiio
+
 List available devices:
 
     paswitch-rs --list

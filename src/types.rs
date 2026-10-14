@@ -4,7 +4,7 @@ use crate::Cli;
 pub enum Type {
     Interactive,
     List,
-    Set,
+    Set(String),
     Unknown,
 }
 
@@ -12,8 +12,8 @@ impl From<&Cli> for Type {
     fn from(args: &Cli) -> Self {
         if args.list {
             Type::List
-        } else if args.search.is_some() && args.search.as_ref().unwrap().chars().count() > 0 {
-            Type::Set
+        } else if let Some(search) = args.search.as_ref().filter(|search| !search.is_empty()) {
+            Type::Set(search.to_string())
         } else if args.interactive {
             Type::Interactive
         } else {
@@ -78,7 +78,7 @@ mod tests {
                 search: Some("Fiio".to_owned()),
                 search_key: "".to_owned()
             }),
-            Type::Set
+            Type::Set("Fiio".to_owned())
         )
     }
 
