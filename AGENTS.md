@@ -2,7 +2,7 @@
 
 ## Code style
 
-`rustfmt` defaults, no `rustfmt.toml`. Run `cargo fmt` and `cargo test` before committing (CI builds and tests).
+`rustfmt` defaults, no `rustfmt.toml`. Run `cargo fmt`, `cargo clippy --all-targets -- -D warnings` and `cargo test` before committing (CI checks all three).
 
 - One module per concern (`pulse.rs`, `paswitch.rs`, `commands.rs`), with the `mod` lines at the top of `main.rs`.
 - Never `unwrap()` or `expect()` on anything from outside the program (`pactl` output, user input). Use `?`.
