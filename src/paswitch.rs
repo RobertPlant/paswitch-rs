@@ -1,25 +1,6 @@
-use anyhow::{anyhow, Context, Result};
-use std::process::Command;
+use anyhow::{Context, Result};
 
-use crate::commands::PACTL;
-
-fn pactl(args: &[&str]) -> Result<String> {
-    let output = Command::new(PACTL)
-        .args(args)
-        .output()
-        .with_context(|| format!("Failed to execute `{} {}`", PACTL, args.join(" ")))?;
-
-    if !output.status.success() {
-        return Err(anyhow!(
-            "`{} {}` failed: {}",
-            PACTL,
-            args.join(" "),
-            String::from_utf8_lossy(&output.stderr).trim()
-        ));
-    }
-
-    Ok(String::from_utf8(output.stdout)?)
-}
+use crate::commands::pactl;
 
 /// First tab-separated field of each `pactl list short sink-inputs` line.
 fn sink_input_ids(list_output: &str) -> Vec<&str> {
@@ -31,8 +12,8 @@ fn sink_input_ids(list_output: &str) -> Vec<&str> {
         .collect()
 }
 
-pub fn set_source(source: String) -> Result<()> {
-    pactl(&["set-default-sink", &source])
+pub fn set_source(source: &str) -> Result<()> {
+    pactl(&["set-default-sink", source])
         .context("Failed to set the default sink - invalid sink may have been supplied")?;
 
     // Setting the default only affects new streams; anything already playing
@@ -40,7 +21,7 @@ pub fn set_source(source: String) -> Result<()> {
     for id in sink_input_ids(&pactl(&["list", "short", "sink-inputs"])?) {
         // A stream can end between the listing and the move, so a failure here
         // is expected and must not abort a switch that has already succeeded.
-        let _ = pactl(&["move-sink-input", id, &source]);
+        let _ = pactl(&["move-sink-input", id, source]);
     }
 
     println!("Set pulse output to id: {}", source);

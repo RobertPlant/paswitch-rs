@@ -5,7 +5,7 @@ mod pulse;
 mod types;
 
 use anyhow::Result;
-use clap::Parser;
+use clap::{CommandFactory, Parser};
 use commands::{check_command, PACTL};
 use interactive::interactive;
 use paswitch::set_source;
@@ -42,12 +42,11 @@ fn main() -> Result<()> {
     match Type::from(&args) {
         Type::List => list()?,
         Type::Interactive => interactive()?,
-        Type::Set => set_source(search(
-            args.search_key,
-            args.search.unwrap(),
-            args.case_sensitive,
-        )?)?,
-        _ => (),
+        Type::Set(needle) => set_source(&search(&args.search_key, &needle, args.case_sensitive)?)?,
+        Type::Unknown => {
+            Cli::command().print_help()?;
+            std::process::exit(2);
+        }
     }
 
     Ok(())

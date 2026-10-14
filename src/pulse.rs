@@ -1,38 +1,7 @@
-use crate::commands::PACTL;
+use crate::commands::pactl;
 use anyhow::{anyhow, Result};
 use std::io::{stdout, Write};
-use std::process::Command;
-use std::str::FromStr;
 use std::str::Lines;
-
-#[derive(Debug, PartialEq)]
-pub enum EntityType {
-    Sink,
-    Module,
-    Source,
-    Input,
-    SinkInput,
-    Client,
-    Card,
-    Unknown,
-}
-
-impl FromStr for EntityType {
-    type Err = anyhow::Error;
-
-    fn from_str(input: &str) -> Result<EntityType, Self::Err> {
-        match input {
-            "Sink" => Ok(EntityType::Sink),
-            "Module" => Ok(EntityType::Module),
-            "Source" => Ok(EntityType::Source),
-            "Input" => Ok(EntityType::Input),
-            "Sink Input" => Ok(EntityType::SinkInput),
-            "Client" => Ok(EntityType::Client),
-            "Card" => Ok(EntityType::Card),
-            _ => Ok(EntityType::Unknown),
-        }
-    }
-}
 
 struct Entity {
     id: String,
@@ -44,14 +13,24 @@ struct Entity {
     volume: String,
 }
 
-fn list_sinks() -> String {
-    let output = Command::new(PACTL).arg("list").output().unwrap();
+/// The id from a `Sink #43` header, `None` for any other section.
+fn sink_id(header: &str) -> Option<&str> {
+    let (section, id) = header.split_once(" #")?;
+    let is_sink = section == "Sink";
 
-    if !output.status.success() {
-        println!("error");
-    }
+    is_sink.then_some(id)
+}
 
-    String::from_utf8(output.stdout).unwrap()
+/// Splits a `Key: value` field or a `key.name = "value"` property, whichever separator comes first.
+fn key_value(line: &str) -> Option<(&str, &str)> {
+    let (at, separator) = [": ", " = "]
+        .into_iter()
+        .filter_map(|separator| line.find(separator).map(|at| (at, separator)))
+        .min()?;
+    let (key, rest) = line.split_at(at);
+    let value = rest.strip_prefix(separator)?.trim_matches('"');
+
+    Some((key.trim(), value))
 }
 
 /// Literal substring match. Device descriptions routinely contain regex
@@ -66,62 +45,46 @@ fn matches(haystack: &str, needle: &str, case_sensitive: bool) -> bool {
     }
 }
 
-pub fn search(search_key: String, search_value: String, case_sensitive: bool) -> Result<String> {
-    for group in list_sinks().split_terminator("\n\n") {
-        match find(group, search_key.to_owned(), &search_value, case_sensitive) {
-            Ok(id) => return Ok(id),
-            _ => continue,
-        }
-    }
-
-    Err(anyhow!("Search failed: no matching sink found"))
+pub fn search(search_key: &str, search_value: &str, case_sensitive: bool) -> Result<String> {
+    find_sink(&pactl(&["list"])?, search_key, search_value, case_sensitive)
+        .ok_or_else(|| anyhow!("Search failed: no matching sink found"))
 }
 
-fn find(group: &str, search_key: String, needle: &str, case_sensitive: bool) -> Result<String> {
+fn find_sink(output: &str, search_key: &str, needle: &str, case_sensitive: bool) -> Option<String> {
+    output
+        .split_terminator("\n\n")
+        .find_map(|group| find(group, search_key, needle, case_sensitive))
+}
+
+fn find(group: &str, search_key: &str, needle: &str, case_sensitive: bool) -> Option<String> {
     let mut lines = group.lines();
-    let mut first_line = lines.next().unwrap().split(" #");
-    let group_type = EntityType::from_str(first_line.next().unwrap())?;
-    let id = String::from(first_line.next().unwrap());
+    let id = lines.next().and_then(sink_id)?;
+    let is_match = lines
+        .filter_map(key_value)
+        .any(|(key, value)| key == search_key && matches(value, needle, case_sensitive));
 
-    if group_type != EntityType::Sink {
-        return Err(anyhow!("Not a Sink"));
-    }
-
-    for line in lines {
-        let mut split_line = line.split(": ");
-        let key = split_line.next().unwrap().trim();
-        let value = split_line.next().unwrap_or("");
-
-        if key == search_key && matches(value, needle, case_sensitive) {
-            return Ok(id);
-        }
-    }
-
-    Err(anyhow!("Not matched"))
+    is_match.then(|| id.to_string())
 }
 
 pub fn list() -> Result<()> {
+    let output = pactl(&["list"])?;
     let mut t = stdout();
-    writeln!(t).unwrap();
+    writeln!(t)?;
 
-    for group in list_sinks().split_terminator("\n\n") {
+    for group in output.split_terminator("\n\n") {
         let mut lines = group.lines();
-        let mut first_line = lines.next().unwrap().split(" #");
-        let group_type = EntityType::from_str(first_line.next().unwrap())?;
-        let id = String::from(first_line.next().unwrap());
-
-        if group_type != EntityType::Sink {
+        let Some(id) = lines.next().and_then(sink_id) else {
             continue;
-        }
+        };
 
         let sink = Entity {
-            id,
-            state: pull_data(&mut lines, "State".to_string())?,
-            name: pull_data(&mut lines, "Name".to_string())?,
-            description: pull_data(&mut lines, "Description".to_string())?,
-            driver: pull_data(&mut lines, "Driver".to_string())?,
-            mute: pull_data(&mut lines, "Mute".to_string())?,
-            volume: pull_data(&mut lines, "Volume".to_string())?,
+            id: id.to_string(),
+            state: pull_data(&mut lines, "State")?,
+            name: pull_data(&mut lines, "Name")?,
+            description: pull_data(&mut lines, "Description")?,
+            driver: pull_data(&mut lines, "Driver")?,
+            mute: pull_data(&mut lines, "Mute")?,
+            volume: pull_data(&mut lines, "Volume")?,
         };
 
         print_attribute(&mut t, "         ID", &sink.id);
@@ -131,24 +94,18 @@ pub fn list() -> Result<()> {
         print_attribute(&mut t, "     Driver", &sink.driver);
         print_attribute(&mut t, "       Mute", &sink.mute);
         print_attribute(&mut t, "     Volume", &sink.volume);
-        writeln!(t).unwrap();
+        writeln!(t)?;
     }
 
     Ok(())
 }
 
-fn pull_data(lines: &mut Lines, search_key: String) -> Result<String> {
-    for line in lines {
-        let mut split_line = line.split(": ");
-        let key = split_line.next().unwrap().trim();
-        let value = split_line.next().unwrap_or("");
-
-        if key == search_key {
-            return Ok(value.to_string());
-        }
-    }
-
-    Err(anyhow!("Could not find '{}' in pactl output", search_key))
+fn pull_data(lines: &mut Lines, search_key: &str) -> Result<String> {
+    lines
+        .filter_map(key_value)
+        .find(|(key, _)| *key == search_key)
+        .map(|(_, value)| value.to_string())
+        .ok_or_else(|| anyhow!("Could not find '{}' in pactl output", search_key))
 }
 
 fn print_attribute(t: &mut impl Write, key: &str, value: &str) {
@@ -158,17 +115,74 @@ fn print_attribute(t: &mut impl Write, key: &str, value: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
+
+    const FIIO: &str = include_str!("test/data/pactl-fiio.txt");
+    const FULL_LIST: &str = include_str!("test/data/pactl-list.txt");
 
     #[test]
     fn test_find_by_description() {
-        let contents = fs::read_to_string("src/test/data/pactl-fiio.txt")
-            .expect("Something went wrong reading the file");
-
         assert_eq!(
-            find(&contents, "Description".to_string(), "Fiio", false).unwrap(),
-            "43"
+            find(FIIO, "Description", "Fiio", false),
+            Some("43".to_string())
         )
+    }
+
+    #[test]
+    fn test_find_by_property() {
+        assert_eq!(
+            find(FIIO, "device.description", "Fiio", false),
+            Some("43".to_string())
+        )
+    }
+
+    #[test]
+    fn test_find_sink_skips_other_sections() {
+        assert_eq!(
+            find_sink(FULL_LIST, "Description", "Navi 10", false),
+            Some("45".to_string())
+        )
+    }
+
+    #[test]
+    fn test_find_sink_ignores_matching_sources() {
+        assert_eq!(
+            find_sink(FULL_LIST, "Description", "Monitor of", false),
+            None
+        )
+    }
+
+    #[test]
+    fn test_find_sink_survives_trailing_blank_lines() {
+        assert_eq!(
+            find_sink("Sink #43\n\tName: a\n\n\n", "Name", "b", false),
+            None
+        )
+    }
+
+    #[test]
+    fn test_sink_id_without_a_header() {
+        assert_eq!(sink_id(""), None)
+    }
+
+    #[test]
+    fn test_key_value_keeps_colons_in_the_value() {
+        assert_eq!(
+            key_value("\tDescription: Fiio: E10"),
+            Some(("Description", "Fiio: E10"))
+        )
+    }
+
+    #[test]
+    fn test_key_value_reads_properties() {
+        assert_eq!(
+            key_value("\t\tdevice.description = \"Fiio: E10\""),
+            Some(("device.description", "Fiio: E10"))
+        )
+    }
+
+    #[test]
+    fn test_key_value_skips_section_titles() {
+        assert_eq!(key_value("\tProperties:"), None)
     }
 
     #[test]
