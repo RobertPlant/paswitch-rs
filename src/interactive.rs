@@ -6,6 +6,7 @@ use crate::pulse::list;
 
 pub fn interactive() -> Result<()> {
     let mut s = String::new();
+
     list().context("Failed to list audio sinks")?;
 
     print!("Please select an input id: ");
