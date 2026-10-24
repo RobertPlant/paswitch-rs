@@ -3,11 +3,13 @@ name: Release
 on:
   push:
     tags: [ 'v*' ]
-  # builds the binary without releasing, to try the build on a branch
+  # builds the binary and dry-runs the crates.io publish without releasing, to try it on a branch
   workflow_dispatch:
 
 permissions:
   contents: write
+  # crates.io trusted publishing swaps the job's OIDC token for a short-lived publish token
+  id-token: write
 
 jobs:
   release:
@@ -24,13 +26,19 @@ jobs:
         sudo apt-get install -y musl-tools
         rustup target add "$TARGET"
         cargo build --release --locked --target "$TARGET"
-        tar -czf paswitch-rs-x86_64-linux.tar.gz -C "target/$TARGET/release" paswitch-rs
+        tar -czf "$RUNNER_TEMP/paswitch-rs-x86_64-linux.tar.gz" -C "target/$TARGET/release" paswitch-rs
     - uses: actions/upload-artifact@v7
       with:
         name: paswitch-rs-x86_64-linux
-        path: paswitch-rs-x86_64-linux.tar.gz
+        path: ${{ runner.temp }}/paswitch-rs-x86_64-linux.tar.gz
+    - uses: rust-lang/crates-io-auth-action@v1
+      id: auth
+    - name: Publish to crates.io
+      run: cargo publish --locked ${{ github.ref_type != 'tag' && '--dry-run' || '' }}
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
     - name: Create GitHub release
       if: github.ref_type == 'tag'
-      run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes paswitch-rs-x86_64-linux.tar.gz
+      run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes "$RUNNER_TEMP/paswitch-rs-x86_64-linux.tar.gz"
       env:
         GH_TOKEN: ${{ github.token }}
