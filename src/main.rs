@@ -7,9 +7,9 @@ mod types;
 use anyhow::Result;
 use clap::{CommandFactory, Parser};
 use commands::{check_command, PACTL};
-use interactive::interactive;
+use interactive::prompt_for_sink;
 use paswitch::set_source;
-use pulse::{list, search};
+use pulse::{list_sinks, search_sinks};
 use types::Type;
 
 #[derive(Debug, Parser)]
@@ -42,9 +42,13 @@ fn main() -> Result<()> {
     check_command(PACTL)?;
 
     match mode {
-        Type::List => list()?,
-        Type::Interactive => interactive()?,
-        Type::Set(needle) => set_source(&search(&args.search_key, &needle, args.case_sensitive)?)?,
+        Type::List => list_sinks()?,
+        Type::Interactive => prompt_for_sink()?,
+        Type::Set(needle) => set_source(&search_sinks(
+            &args.search_key,
+            &needle,
+            args.case_sensitive,
+        )?)?,
         Type::Unknown => {
             Cli::command().print_help()?;
             std::process::exit(2);

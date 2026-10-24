@@ -13,7 +13,7 @@ pub fn check_command(command: &str) -> Result<()> {
     }
 }
 
-pub fn pactl(args: &[&str]) -> Result<String> {
+pub fn run_pactl(args: &[&str]) -> Result<String> {
     // pactl translates its labels ("Sink #" is "Ziel #" in German), the parser needs English
     let output = Command::new(PACTL)
         .env("LC_ALL", "C")

@@ -2,12 +2,12 @@ use anyhow::{Context, Result};
 use std::io::{stdin, stdout, Write};
 
 use crate::paswitch::set_source;
-use crate::pulse::list;
+use crate::pulse::list_sinks;
 
-pub fn interactive() -> Result<()> {
+pub fn prompt_for_sink() -> Result<()> {
     let mut s = String::new();
 
-    list().context("Failed to list audio sinks")?;
+    list_sinks().context("Failed to list audio sinks")?;
 
     print!("Please select an input id: ");
     let _ = stdout().flush();
