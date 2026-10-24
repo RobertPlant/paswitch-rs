@@ -3,6 +3,8 @@ name: Release
 on:
   push:
     tags: [ 'v*' ]
+  # builds the binary without releasing, to try the build on a branch
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -10,8 +12,25 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      TARGET: x86_64-unknown-linux-musl
     steps:
+    - uses: actions/checkout@v7
+    - name: Check the tag matches Cargo.toml
+      if: github.ref_type == 'tag'
+      run: test "$GITHUB_REF_NAME" = "v$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)"
+    - name: Build a static binary
+      run: |
+        sudo apt-get install -y musl-tools
+        rustup target add "$TARGET"
+        cargo build --release --locked --target "$TARGET"
+        tar -czf paswitch-rs-x86_64-linux.tar.gz -C "target/$TARGET/release" paswitch-rs
+    - uses: actions/upload-artifact@v7
+      with:
+        name: paswitch-rs-x86_64-linux
+        path: paswitch-rs-x86_64-linux.tar.gz
     - name: Create GitHub release
-      run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes
+      if: github.ref_type == 'tag'
+      run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes paswitch-rs-x86_64-linux.tar.gz
       env:
         GH_TOKEN: ${{ github.token }}
