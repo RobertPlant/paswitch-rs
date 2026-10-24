@@ -76,10 +76,10 @@ fn find_sink_in_group(
 }
 
 pub fn list_sinks() -> Result<()> {
-    let mut t = stdout();
+    let mut out = stdout();
 
     let output = run_pactl(&["list"])?;
-    writeln!(t)?;
+    writeln!(out)?;
 
     for group in output.split_terminator("\n\n") {
         let Some(id) = group.lines().next().and_then(parse_sink_id) else {
@@ -96,14 +96,14 @@ pub fn list_sinks() -> Result<()> {
             volume: get_field(group, "Volume")?,
         };
 
-        print_attribute(&mut t, "         ID", &sink.id);
-        print_attribute(&mut t, "Description", &sink.description);
-        print_attribute(&mut t, "       Name", &sink.name);
-        print_attribute(&mut t, "      State", &sink.state);
-        print_attribute(&mut t, "     Driver", &sink.driver);
-        print_attribute(&mut t, "       Mute", &sink.mute);
-        print_attribute(&mut t, "     Volume", &sink.volume);
-        writeln!(t)?;
+        print_attribute(&mut out, "         ID", &sink.id);
+        print_attribute(&mut out, "Description", &sink.description);
+        print_attribute(&mut out, "       Name", &sink.name);
+        print_attribute(&mut out, "      State", &sink.state);
+        print_attribute(&mut out, "     Driver", &sink.driver);
+        print_attribute(&mut out, "       Mute", &sink.mute);
+        print_attribute(&mut out, "     Volume", &sink.volume);
+        writeln!(out)?;
     }
 
     Ok(())
@@ -118,8 +118,8 @@ fn get_field(group: &str, search_key: &str) -> Result<String> {
         .ok_or_else(|| anyhow!("Could not find '{}' in pactl output", search_key))
 }
 
-fn print_attribute(t: &mut impl Write, key: &str, value: &str) {
-    writeln!(t, "\x1b[1m{}: \x1b[0m{}", key, value).unwrap();
+fn print_attribute(out: &mut impl Write, key: &str, value: &str) {
+    writeln!(out, "\x1b[1m{}: \x1b[0m{}", key, value).unwrap();
 }
 
 #[cfg(test)]
