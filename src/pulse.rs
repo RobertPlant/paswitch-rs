@@ -1,7 +1,6 @@
 use crate::commands::pactl;
 use anyhow::{anyhow, Result};
 use std::io::{stdout, Write};
-use std::str::Lines;
 
 struct Entity {
     id: String,
@@ -73,19 +72,18 @@ pub fn list() -> Result<()> {
     writeln!(t)?;
 
     for group in output.split_terminator("\n\n") {
-        let mut lines = group.lines();
-        let Some(id) = lines.next().and_then(sink_id) else {
+        let Some(id) = group.lines().next().and_then(sink_id) else {
             continue;
         };
 
         let sink = Entity {
             id: id.to_string(),
-            state: pull_data(&mut lines, "State")?,
-            name: pull_data(&mut lines, "Name")?,
-            description: pull_data(&mut lines, "Description")?,
-            driver: pull_data(&mut lines, "Driver")?,
-            mute: pull_data(&mut lines, "Mute")?,
-            volume: pull_data(&mut lines, "Volume")?,
+            state: pull_data(group, "State")?,
+            name: pull_data(group, "Name")?,
+            description: pull_data(group, "Description")?,
+            driver: pull_data(group, "Driver")?,
+            mute: pull_data(group, "Mute")?,
+            volume: pull_data(group, "Volume")?,
         };
 
         print_attribute(&mut t, "         ID", &sink.id);
@@ -101,8 +99,9 @@ pub fn list() -> Result<()> {
     Ok(())
 }
 
-fn pull_data(lines: &mut Lines, search_key: &str) -> Result<String> {
-    lines
+fn pull_data(group: &str, search_key: &str) -> Result<String> {
+    group
+        .lines()
         .filter_map(key_value)
         .find(|(key, _)| *key == search_key)
         .map(|(_, value)| value.to_string())
@@ -158,6 +157,11 @@ mod tests {
             find_sink("Sink #43\n\tName: a\n\n\n", "Name", "b", false),
             None
         )
+    }
+
+    #[test]
+    fn test_pull_data_reads_a_field_from_the_group() {
+        assert_eq!(pull_data(FIIO, "State").unwrap(), "RUNNING")
     }
 
     #[test]
