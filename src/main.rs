@@ -37,9 +37,11 @@ struct Cli {
 
 fn main() -> Result<()> {
     let args = Cli::parse();
+    let mode = Type::from(&args);
+
     check_command(PACTL)?;
 
-    match Type::from(&args) {
+    match mode {
         Type::List => list()?,
         Type::Interactive => interactive()?,
         Type::Set(needle) => set_source(&search(&args.search_key, &needle, args.case_sensitive)?)?,

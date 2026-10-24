@@ -67,8 +67,9 @@ fn find(group: &str, search_key: &str, needle: &str, case_sensitive: bool) -> Op
 }
 
 pub fn list() -> Result<()> {
-    let output = pactl(&["list"])?;
     let mut t = stdout();
+
+    let output = pactl(&["list"])?;
     writeln!(t)?;
 
     for group in output.split_terminator("\n\n") {
