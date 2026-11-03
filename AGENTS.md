@@ -9,6 +9,10 @@
   Some still exist in `pulse.rs` and `main.rs`: replace them when you're in that code anyway. Tests may unwrap.
 - New error types are a `thiserror` enum per module, each message a readable sentence, with the underlying
   error kept via `#[from]` / `#[source]`. `anyhow` only in `main`, adding `.context(...)` as errors pass up.
+- A list read back from storage drops only the records that fail their check, with a warning on stderr for
+  each, never the whole list.
+- Dates, URL encoding, validation and protocol parsing come from the stdlib or a well-used crate (`chrono`,
+  `serde_json`), stdlib first. A hand-written version gets the edge cases wrong.
 - Check every command's exit status. `Command::output()` is `Ok` when the program exits 1: check
   `status.success()` and put stderr in the error.
 - `match` on results, early `return Err(...)` for guards, `Ok(())` last.
@@ -22,16 +26,20 @@
 - Values first, then effects: work out every value the effects need together, then a blank line, then the
   `pactl` calls and prints. Only a value that needs an effect's result comes after it.
 - A list is plural and each item singular, closures included: `groups.find_map(|group| ...)`, never `g`, `t`
-  or `s`. No abbreviations.
+  or `s`. An unused value is `_` and an error `err` (`.map_err(|err| ...)`). Never `i` / `j`, which don't say
+  what's being walked. No abbreviations.
 - A function's name is a verb and its object: `parse_sink_id`, `list_sinks`, `find_sink`. Not a bare noun
   (`sink_id`, `key_value`) or a noun and a preposition. `parse` for text turned into a value, `find` for a
   search that can miss, `read` for terminal input, `is_` / `has_` for a predicate.
 - No banner comments over groups of functions. Functions that share a role go in their own module.
 - Dispatch with `match`, never a map of functions keyed by name.
 - Functions under ~50 lines. Pure logic in plain functions, the `pactl` and terminal calls in the command layer.
-- clap derive, with a `///` doc on every argument. Otherwise comments are rare one-line notes on why.
+- clap derive, with a `///` doc on every argument. Otherwise comments are rare one-line notes on why, with no
+  ticket or spec references (`#12:`), which go stale once the ticket closes.
 - Tests in a `#[cfg(test)] mod tests` at the bottom of the file, named `test_<what_it_shows>`, one `assert_eq!`
   each.
 - No em-dashes in code, comments or docs. Use a comma, hyphen or full stop.
 - Commit messages are one line, past tense, full stop, under about 60 characters: `Added a --version flag.`
   Say what changed, not how. A body only for the why the diff can't show.
+- Review fixes fold into the commit they fix (`git commit --fixup`, then autosquash), not a `fix review`
+  commit on the end.
