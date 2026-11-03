@@ -1,0 +1,25 @@
+
+[1m         ID: [0m41
+[1mDescription: [0mScarlett 2i2 Camera Analog Stereo
+[1m       Name: [0malsa_output.usb-Focusrite_Scarlett_2i2_USB_Y8JTD1D074118F-00.analog-stereo
+[1m      State: [0mSUSPENDED
+[1m     Driver: [0mPipeWire
+[1m       Mute: [0mno
+[1m     Volume: [0mfront-left: 65536 / 100% / 0.00 dB,   front-right: 65536 / 100% / 0.00 dB
+
+[1m         ID: [0m43
+[1mDescription: [0mFiio E10 Analog Stereo
+[1m       Name: [0malsa_output.usb-FiiO_DigiHug_USB_Audio-01.analog-stereo
+[1m      State: [0mRUNNING
+[1m     Driver: [0mPipeWire
+[1m       Mute: [0mno
+[1m     Volume: [0mfront-left: 65536 / 100% / 0.00 dB,   front-right: 65536 / 100% / 0.00 dB
+
+[1m         ID: [0m45
+[1mDescription: [0mNavi 10 HDMI Audio Digital Stereo (HDMI)
+[1m       Name: [0malsa_output.pci-0000:1e:00.1.hdmi-stereo
+[1m      State: [0mSUSPENDED
+[1m     Driver: [0mPipeWire
+[1m       Mute: [0mno
+[1m     Volume: [0mfront-left: 65536 / 100% / 0.00 dB,   front-right: 65536 / 100% / 0.00 dB
+

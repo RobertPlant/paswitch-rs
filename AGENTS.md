@@ -6,7 +6,7 @@
 
 - One module per concern (`pulse.rs`, `paswitch.rs`, `commands.rs`), with the `mod` lines at the top of `main.rs`.
 - Never `unwrap()` or `expect()` on anything from outside the program (`pactl` output, user input). Use `?`.
-  Some still exist in `pulse.rs` and `main.rs`: replace them when you're in that code anyway. Tests may unwrap.
+  Tests may unwrap.
 - New error types are a `thiserror` enum per module, each message a readable sentence, with the underlying
   error kept via `#[from]` / `#[source]`. `anyhow` only in `main`, adding `.context(...)` as errors pass up.
 - A list read back from storage drops only the records that fail their check, with a warning on stderr for
