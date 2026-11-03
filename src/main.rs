@@ -6,7 +6,6 @@ mod types;
 
 use anyhow::Result;
 use clap::{CommandFactory, Parser};
-use commands::{check_command, PACTL};
 use interactive::prompt_for_sink;
 use paswitch::set_source;
 use pulse::{list_sinks, search_sinks};
@@ -38,8 +37,6 @@ struct Cli {
 fn main() -> Result<()> {
     let args = Cli::parse();
     let mode = Type::from(&args);
-
-    check_command(PACTL)?;
 
     match mode {
         Type::List => list_sinks()?,
