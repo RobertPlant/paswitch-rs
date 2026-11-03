@@ -5,16 +5,18 @@ mod pulse;
 mod types;
 
 use anyhow::Result;
-use clap::{CommandFactory, Parser};
+use clap::{ArgGroup, Parser};
 use interactive::prompt_for_sink;
 use paswitch::set_source;
 use pulse::{list_sinks, search_sinks};
 use types::Type;
 
 #[derive(Debug, Parser)]
-#[command(version)]
+#[command(version, arg_required_else_help = true)]
+#[command(group(ArgGroup::new("mode").required(true).args(["search", "list", "interactive"])))]
 struct Cli {
     /// Device to search for
+    #[arg(value_parser = clap::builder::NonEmptyStringValueParser::new())]
     search: Option<String>,
 
     /// The field from `pactl list` that should be searched
@@ -36,7 +38,7 @@ struct Cli {
 
 fn main() -> Result<()> {
     let args = Cli::parse();
-    let mode = Type::from(&args);
+    let mode = Type::try_from(&args)?;
 
     match mode {
         Type::List => list_sinks()?,
@@ -46,10 +48,6 @@ fn main() -> Result<()> {
             &needle,
             args.case_sensitive,
         )?)?,
-        Type::Unknown => {
-            Cli::command().print_help()?;
-            std::process::exit(2);
-        }
     }
 
     Ok(())

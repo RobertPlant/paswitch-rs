@@ -1,3 +1,5 @@
+use anyhow::{anyhow, Error};
+
 use crate::Cli;
 
 #[derive(Debug, PartialEq)]
@@ -5,19 +7,17 @@ pub enum Type {
     Interactive,
     List,
     Set(String),
-    Unknown,
 }
 
-impl From<&Cli> for Type {
-    fn from(args: &Cli) -> Self {
-        if args.list {
-            Type::List
-        } else if let Some(search) = args.search.as_ref().filter(|search| !search.is_empty()) {
-            Type::Set(search.to_string())
-        } else if args.interactive {
-            Type::Interactive
-        } else {
-            Type::Unknown
+impl TryFrom<&Cli> for Type {
+    type Error = Error;
+
+    fn try_from(args: &Cli) -> Result<Self, Self::Error> {
+        match (&args.search, args.list, args.interactive) {
+            (Some(search), false, false) => Ok(Type::Set(search.to_string())),
+            (None, true, false) => Ok(Type::List),
+            (None, false, true) => Ok(Type::Interactive),
+            _ => Err(anyhow!("Give one of a search, --list or --interactive")),
         }
     }
 }
@@ -25,88 +25,46 @@ impl From<&Cli> for Type {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::Parser;
+
+    fn parse_type(args: &[&str]) -> Option<Type> {
+        let cli = Cli::try_parse_from([&["paswitch-rs"], args].concat()).ok()?;
+
+        Type::try_from(&cli).ok()
+    }
 
     #[test]
     fn test_parses_to_list() {
-        assert_eq!(
-            Type::from(&Cli {
-                list: true,
-                interactive: true,
-                case_sensitive: false,
-                search: Some("".to_owned()),
-                search_key: "".to_owned()
-            }),
-            Type::List
-        )
+        assert_eq!(parse_type(&["--list"]), Some(Type::List))
     }
 
     #[test]
-    fn test_preferrs_list() {
-        assert_eq!(
-            Type::from(&Cli {
-                list: true,
-                interactive: true,
-                case_sensitive: false,
-                search: Some("Fiio".to_owned()),
-                search_key: "".to_owned()
-            }),
-            Type::List
-        )
-    }
-
-    #[test]
-    fn test_parses_to_interative() {
-        assert_eq!(
-            Type::from(&Cli {
-                list: false,
-                interactive: true,
-                case_sensitive: false,
-                search: None,
-                search_key: "".to_owned()
-            }),
-            Type::Interactive
-        )
+    fn test_parses_to_interactive() {
+        assert_eq!(parse_type(&["--interactive"]), Some(Type::Interactive))
     }
 
     #[test]
     fn test_parses_to_set() {
-        assert_eq!(
-            Type::from(&Cli {
-                list: false,
-                case_sensitive: false,
-                interactive: true,
-                search: Some("Fiio".to_owned()),
-                search_key: "".to_owned()
-            }),
-            Type::Set("Fiio".to_owned())
-        )
+        assert_eq!(parse_type(&["Fiio"]), Some(Type::Set("Fiio".to_string())))
     }
 
     #[test]
-    fn test_parses_to_unknown() {
-        assert_eq!(
-            Type::from(&Cli {
-                list: false,
-                interactive: false,
-                case_sensitive: false,
-                search: Some("".to_owned()),
-                search_key: "".to_owned()
-            }),
-            Type::Unknown
-        )
+    fn test_rejects_no_mode() {
+        assert_eq!(parse_type(&["--case-sensitive"]), None)
     }
 
     #[test]
-    fn test_allows_none_search() {
-        assert_eq!(
-            Type::from(&Cli {
-                list: false,
-                interactive: false,
-                case_sensitive: false,
-                search: None,
-                search_key: "".to_owned()
-            }),
-            Type::Unknown
-        )
+    fn test_rejects_two_modes() {
+        assert_eq!(parse_type(&["--list", "--interactive"]), None)
+    }
+
+    #[test]
+    fn test_rejects_a_search_with_a_mode() {
+        assert_eq!(parse_type(&["--list", "Fiio"]), None)
+    }
+
+    #[test]
+    fn test_rejects_an_empty_search() {
+        assert_eq!(parse_type(&[""]), None)
     }
 }
