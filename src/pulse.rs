@@ -2,15 +2,7 @@ use crate::commands::run_pactl;
 use anyhow::{anyhow, Result};
 use std::io::{stdout, Write};
 
-struct Entity {
-    id: String,
-    state: String,
-    name: String,
-    description: String,
-    driver: String,
-    mute: String,
-    volume: String,
-}
+const LISTED_FIELDS: [&str; 6] = ["Description", "Name", "State", "Driver", "Mute", "Volume"];
 
 /// The id from a `Sink #43` header, `None` for any other section.
 fn parse_sink_id(header: &str) -> Option<&str> {
@@ -32,10 +24,7 @@ fn parse_key_value(line: &str) -> Option<(&str, &str)> {
     Some((key.trim(), value))
 }
 
-/// Literal substring match. Device descriptions routinely contain regex
-/// metacharacters -- "Arctis 7 (Game)" parsed as a pattern matches the text
-/// "Arctis 7 Game" and misses the real name -- so the needle is compared as
-/// plain text.
+/// Literal match, not a regex: device names are full of brackets, like "Arctis 7 (Game)".
 fn has_needle(haystack: &str, needle: &str, case_sensitive: bool) -> bool {
     if case_sensitive {
         haystack.contains(needle)
@@ -76,50 +65,44 @@ fn find_sink_in_group(
 }
 
 pub fn list_sinks() -> Result<()> {
-    let mut out = stdout();
-
     let output = run_pactl(&["list"])?;
-    writeln!(out)?;
+    let listing = format_sinks(&output)?;
 
-    for group in output.split_terminator("\n\n") {
-        let Some(id) = group.lines().next().and_then(parse_sink_id) else {
-            continue;
-        };
-
-        let sink = Entity {
-            id: id.to_string(),
-            state: get_field(group, "State")?,
-            name: get_field(group, "Name")?,
-            description: get_field(group, "Description")?,
-            driver: get_field(group, "Driver")?,
-            mute: get_field(group, "Mute")?,
-            volume: get_field(group, "Volume")?,
-        };
-
-        print_attribute(&mut out, "         ID", &sink.id);
-        print_attribute(&mut out, "Description", &sink.description);
-        print_attribute(&mut out, "       Name", &sink.name);
-        print_attribute(&mut out, "      State", &sink.state);
-        print_attribute(&mut out, "     Driver", &sink.driver);
-        print_attribute(&mut out, "       Mute", &sink.mute);
-        print_attribute(&mut out, "     Volume", &sink.volume);
-        writeln!(out)?;
-    }
+    stdout().write_all(listing.as_bytes())?;
 
     Ok(())
 }
 
-fn get_field(group: &str, search_key: &str) -> Result<String> {
+fn format_sinks(output: &str) -> Result<String> {
+    let sinks = output
+        .split_terminator("\n\n")
+        .filter_map(|group| Some((group, group.lines().next().and_then(parse_sink_id)?)))
+        .map(|(group, id)| format_sink(group, id))
+        .collect::<Result<String>>()?;
+
+    Ok(format!("\n{}", sinks))
+}
+
+fn format_sink(group: &str, id: &str) -> Result<String> {
+    let fields = LISTED_FIELDS
+        .iter()
+        .map(|key| Ok(format_attribute(key, get_field(group, key)?)))
+        .collect::<Result<String>>()?;
+
+    Ok(format!("{}{}\n", format_attribute("ID", id), fields))
+}
+
+fn get_field<'a>(group: &'a str, search_key: &str) -> Result<&'a str> {
     group
         .lines()
         .filter_map(parse_key_value)
         .find(|(key, _)| *key == search_key)
-        .map(|(_, value)| value.to_string())
+        .map(|(_, value)| value)
         .ok_or_else(|| anyhow!("Could not find '{}' in pactl output", search_key))
 }
 
-fn print_attribute(out: &mut impl Write, key: &str, value: &str) {
-    writeln!(out, "\x1b[1m{}: \x1b[0m{}", key, value).unwrap();
+fn format_attribute(key: &str, value: &str) -> String {
+    format!("\x1b[1m{:>11}: \x1b[0m{}\n", key, value)
 }
 
 #[cfg(test)]
@@ -134,6 +117,14 @@ mod tests {
         assert_eq!(
             find_sink_in_group(FIIO, "Description", "Fiio", false),
             Some("43".to_string())
+        )
+    }
+
+    #[test]
+    fn test_find_ignores_matches_in_other_fields() {
+        assert_eq!(
+            find_sink_in_group(FIIO, "Name", "Analog Stereo", false),
+            None
         )
     }
 
@@ -172,6 +163,19 @@ mod tests {
     #[test]
     fn test_get_field_reads_a_field_from_the_group() {
         assert_eq!(get_field(FIIO, "State").unwrap(), "RUNNING")
+    }
+
+    #[test]
+    fn test_format_sinks_lists_each_sink() {
+        assert_eq!(
+            format_sinks(FULL_LIST).unwrap(),
+            include_str!("test/data/pactl-list-formatted.txt")
+        )
+    }
+
+    #[test]
+    fn test_format_sinks_needs_every_listed_field() {
+        assert!(format_sinks("Sink #43\n\tName: a\n").is_err())
     }
 
     #[test]
@@ -221,21 +225,25 @@ mod tests {
     }
 
     #[test]
-    fn test_print_attribute_emits_bold_key_plain_value() {
-        let mut out = Vec::new();
-        print_attribute(&mut out, "       Name", "alsa_output.usb-FiiO");
+    fn test_format_attribute_emits_bold_key_plain_value() {
         assert_eq!(
-            String::from_utf8(out).unwrap(),
+            format_attribute("Name", "alsa_output.usb-FiiO"),
             "\x1b[1m       Name: \x1b[0malsa_output.usb-FiiO\n"
-        );
+        )
     }
 
     #[test]
-    fn test_has_needle_regex_metacharacters_literally() {
-        // As a pattern, "(Game)" matched "Arctis 7 Game" and missed the real
-        // device name; "Fiio +" failed to compile at all.
-        assert!(has_needle("Arctis 7 (Game)", "(Game)", false));
-        assert!(!has_needle("Arctis 7 Game", "(Game)", false));
-        assert!(has_needle("Fiio + DAC", "Fiio +", false));
+    fn test_has_needle_matches_brackets_literally() {
+        assert!(has_needle("Arctis 7 (Game)", "(Game)", false))
+    }
+
+    #[test]
+    fn test_has_needle_does_not_treat_brackets_as_a_group() {
+        assert!(!has_needle("Arctis 7 Game", "(Game)", false))
+    }
+
+    #[test]
+    fn test_has_needle_matches_a_plus_literally() {
+        assert!(has_needle("Fiio + DAC", "Fiio +", false))
     }
 }
